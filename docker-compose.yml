@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  nodered:
+    image: nodered/node-red:latest
+    container_name: nodered
+    restart: unless-stopped
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./volumes/nodered-data:/data
+    depends_on:
+      - influxdb
+      - mosquitto
+    networks:
+      - pms-network
+
+  influxdb:
+    image: influxdb:1.8
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./volumes/influxdb-data:/var/lib/influxdb
+      - ./init-influxdb:/docker-entrypoint-initdb.d
+    environment:
+      - INFLUXDB_DB=power_monitor
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=adminpassword
+    networks:
+      - pms-network
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./volumes/mosquitto-data:/mosquitto/data
+      - ./volumes/mosquitto-log:/mosquitto/log
+      - ./mosquitto/config:/mosquitto/config
+    networks:
+      - pms-network
+
+networks:
+  pms-network:
+    driver: bridge
