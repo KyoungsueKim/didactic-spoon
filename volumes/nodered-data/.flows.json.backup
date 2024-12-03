@@ -1,0 +1,353 @@
+[
+    {
+        "id": "power-monitor-flow",
+        "type": "tab",
+        "label": "Power Monitor Dashboard",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "4d7706c0476147f2",
+        "type": "ui_tab",
+        "name": "Home",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "145ffd6ba9cacf80",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-light",
+            "lightTheme": {
+                "default": "#0094CE",
+                "baseColor": "#0094CE",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "darkTheme": {
+                "default": "#097479",
+                "baseColor": "#097479",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "customTheme": {
+                "name": "Untitled Theme 1",
+                "default": "#4B7930",
+                "baseColor": "#4B7930",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+            },
+            "themeState": {
+                "base-color": {
+                    "default": "#0094CE",
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-titlebar-backgroundColor": {
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-backgroundColor": {
+                    "value": "#fafafa",
+                    "edited": false
+                },
+                "page-sidebar-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#1bbfff",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#111111",
+                    "edited": false
+                },
+                "widget-backgroundColor": {
+                    "value": "#0094ce",
+                    "edited": false
+                },
+                "widget-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "base-font": {
+                    "value": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+                }
+            },
+            "angularTheme": {
+                "primary": "indigo",
+                "accents": "blue",
+                "warn": "red",
+                "background": "grey",
+                "palette": "light"
+            }
+        },
+        "site": {
+            "name": "Node-RED Dashboard",
+            "hideToolbar": "false",
+            "allowSwipe": "false",
+            "lockMenu": "false",
+            "allowTempTheme": "true",
+            "dateFormat": "DD/MM/YYYY",
+            "sizes": {
+                "sx": 48,
+                "sy": 48,
+                "gx": 6,
+                "gy": 6,
+                "cx": 6,
+                "cy": 6,
+                "px": 0,
+                "py": 0
+            }
+        }
+    },
+    {
+        "id": "4d2dd5f36cec5736",
+        "type": "ui_group",
+        "name": "Default",
+        "tab": "4d7706c0476147f2",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "b13b62d93cb96058",
+        "type": "influxdb",
+        "hostname": "localhost",
+        "port": "8086",
+        "protocol": "http",
+        "database": "power_monitor",
+        "name": "influxdb",
+        "usetls": false,
+        "tls": "",
+        "influxdbVersion": "1.x",
+        "url": "http://localhost:8086",
+        "timeout": "10",
+        "rejectUnauthorized": true
+    },
+    {
+        "id": "9c176d968bc642a4",
+        "type": "mqtt-broker",
+        "name": "mqtt-brocker",
+        "broker": "mosquitto",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "mqtt-in",
+        "type": "mqtt in",
+        "z": "power-monitor-flow",
+        "name": "Power Data",
+        "topic": "pms01/power",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "9c176d968bc642a4",
+        "nl": false,
+        "rap": true,
+        "inputs": 0,
+        "x": 130,
+        "y": 120,
+        "wires": [
+            [
+                "store-data"
+            ]
+        ]
+    },
+    {
+        "id": "store-data",
+        "type": "function",
+        "z": "power-monitor-flow",
+        "name": "Store Data",
+        "func": "msg.payload.timestamp = new Date(msg.payload.timestamp);\nreturn msg;",
+        "outputs": 1,
+        "x": 300,
+        "y": 120,
+        "wires": [
+            [
+                "influxdb-out"
+            ]
+        ]
+    },
+    {
+        "id": "influxdb-out",
+        "type": "influxdb out",
+        "z": "power-monitor-flow",
+        "influxdb": "b13b62d93cb96058",
+        "name": "Power Database",
+        "measurement": "power_measurements",
+        "precision": "",
+        "retentionPolicy": "",
+        "database": "",
+        "retentionPolicyV18Flux": "",
+        "org": "",
+        "bucket": "",
+        "x": 490,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "date-picker",
+        "type": "ui_date_picker",
+        "z": "power-monitor-flow",
+        "name": "Select Period",
+        "label": "Period",
+        "group": "4d2dd5f36cec5736",
+        "width": "",
+        "height": "",
+        "passthru": true,
+        "topic": "",
+        "topicType": "str",
+        "className": "",
+        "x": 130,
+        "y": 300,
+        "wires": [
+            [
+                "query-data"
+            ]
+        ]
+    },
+    {
+        "id": "query-data",
+        "type": "function",
+        "z": "power-monitor-flow",
+        "name": "Query Data",
+        "func": "const startDate = msg.payload;\nconst endDate = new Date(startDate);\nendDate.setDate(endDate.getDate() + 1);\n\nmsg.query = \"SELECT mean(power) as power, mean(energy) as energy FROM power_measurements WHERE time >= '\" + startDate.toISOString() + \"' AND time < '\" + endDate.toISOString() + \"' GROUP BY time(1h)\";\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 300,
+        "y": 300,
+        "wires": [
+            [
+                "influxdb-query"
+            ]
+        ]
+    },
+    {
+        "id": "influxdb-query",
+        "type": "influxdb in",
+        "z": "power-monitor-flow",
+        "influxdb": "b13b62d93cb96058",
+        "name": "Query Results",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "",
+        "x": 490,
+        "y": 300,
+        "wires": [
+            [
+                "chart-power",
+                "gauge-current"
+            ]
+        ]
+    },
+    {
+        "id": "chart-power",
+        "type": "ui_chart",
+        "z": "power-monitor-flow",
+        "name": "Power Usage",
+        "group": "4d2dd5f36cec5736",
+        "order": 1,
+        "width": "0",
+        "height": "0",
+        "label": "Power Usage (W)",
+        "chartType": "line",
+        "xformat": "HH:mm:ss",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "5",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "60",
+        "cutout": "",
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 680,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "gauge-current",
+        "type": "ui_gauge",
+        "z": "power-monitor-flow",
+        "name": "Current Power",
+        "group": "4d2dd5f36cec5736",
+        "order": 2,
+        "width": "",
+        "height": "",
+        "gtype": "gage",
+        "title": "",
+        "label": "",
+        "format": "{{value | number:1}} W",
+        "min": 0,
+        "max": "5000",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 680,
+        "y": 240,
+        "wires": []
+    }
+]
