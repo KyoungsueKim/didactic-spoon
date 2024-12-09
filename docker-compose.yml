@@ -45,6 +45,17 @@ services:
     networks:
       - pms-network
 
+  influxdb-admin:
+    image: influxtsdb/influxdb-admin
+    container_name: influxdb-admin
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    depends_on:
+      - influxdb
+    networks:
+      - pms-network
+
 networks:
   pms-network:
     driver: bridge
