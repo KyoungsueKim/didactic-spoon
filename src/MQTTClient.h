@@ -18,7 +18,7 @@ public:
     bool begin();
     bool publish(const char* topic, JsonDocument& doc);
     void loop();
-    bool isConnected() const;
+    bool isConnected();
 
 private:
     bool connectToWiFi();

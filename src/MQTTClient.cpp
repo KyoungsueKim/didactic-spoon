@@ -114,6 +114,6 @@ void MQTTClient::loop() {
     _mqttClient.loop();
 }
 
-bool MQTTClient::isConnected() const {
+bool MQTTClient::isConnected() {
     return _isInitialized && _mqttClient.connected();
 }

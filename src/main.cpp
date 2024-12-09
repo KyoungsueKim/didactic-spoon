@@ -3,9 +3,9 @@
 #include "MQTTClient.h"
 
 // WiFi and MQTT Configuration
-const char* WIFI_SSID = "your_ssid";
-const char* WIFI_PASSWORD = "your_password";
-const char* MQTT_SERVER = "192.168.1.100";  // Node-RED server IP
+const char* WIFI_SSID = "iPhone 15 Pro";
+const char* WIFI_PASSWORD = "000000madrid";
+const char* MQTT_SERVER = "172.20.10.6";  // Node-RED server IP
 const int MQTT_PORT = 1883;
 const char* MQTT_TOPIC = "pms01/power";
 

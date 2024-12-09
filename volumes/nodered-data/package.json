@@ -5,7 +5,6 @@
     "private": true,
     "dependencies": {
         "node-red-contrib-influxdb": "~0.7.0",
-        "node-red-contrib-mqtt-broker": "~0.2.9",
         "node-red-dashboard": "~3.6.5"
     }
 }
