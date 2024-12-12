@@ -1,165 +1,180 @@
-# PMS01 Power Monitor with MQTT Dashboard
+# PMS01 Power Monitor 데모 가이드
+<img width="916" alt="image" src="https://github.com/user-attachments/assets/778c7cbd-cac6-4dd8-a6ea-f943715503e4" />
 
-이 프로젝트는 PMS01 보드와 PZEM-004T 모듈을 사용하여 전력을 모니터링하고, 데이터를 MQTT를 통해 Node-RED 대시보드로 전송하는 시스템입니다.
+이 문서는 Dignsys사의 PMS01 전력 측정 보드의 간단한 테스트 및 데모 환경을 빠르게 구성하고 동작시킬 수 있도록 안내합니다. 기존에는 아두이노 IDE, Node-RED, MQTT 브로커(mosquitto), InfluxDB를 각각 수동으로 설치/설정해야 했지만, 이번 개편을 통해 모든 백엔드 환경을 **Docker Compose**로 간편하게 구성할 수 있습니다. 또한, PMS01 보드에 업로드되는 펌웨어는 **PlatformIO**를 이용하여 빌드 및 업로드하도록 변경되었습니다.
 
-## 기능
+아래 가이드에 따라 진행하면, PMS01 보드가 로컬 MQTT 서버를 통해 전력 데이터를 보내고, Node-RED 대시보드를 통해 실시간 전력 측정값을 시각화할 수 있습니다.
 
-- 실시간 전력 측정 및 모니터링
-- MQTT를 통한 데이터 전송
-- Node-RED 대시보드를 통한 데이터 시각화
-- 과거 데이터 조회 및 분석
+---
 
-## 하드웨어 요구사항
+## 주요 기능 개요
+<img width="471" alt="image" src="https://github.com/user-attachments/assets/fe8a859e-0f4b-4be7-9a66-9b16900112ff" />
 
-- PMS01 보드
-- PZEM-004T v3.0 모듈
-- WiFi 연결이 가능한 네트워크 환경
+- **PMS01 보드**: PZEM-004T 모듈을 통한 전력(전압, 전류, 전력, 에너지, 주파수, 역률) 측정
+- **MQTT 통신**: 로컬 모스키토(Mosquitto) MQTT 브로커에 측정 데이터를 주기적으로 전송
+- **Node-RED 대시보드**: InfluxDB를 백엔드로 하여 실시간 및 히스토리 데이터를 시각화
+- **Docker Compose 기반 환경**: Node-RED, InfluxDB, Mosquitto를 단일 명령어로 손쉽게 구동
 
-## 소프트웨어 요구사항
+---
 
-### Arduino IDE 설정
+## 사전 준비사항
 
-1. Arduino IDE 설치
-    - [Arduino 공식 웹사이트](https://www.arduino.cc/en/software)에서 다운로드
+1. **PMS01 보드 및 PZEM-004T 모듈** 준비
+2. **PlatformIO** 설치
+   - [PlatformIO 공식 사이트](https://platformio.org/) 참고
+   - VSCode 확장 프로그램 또는 CLI로 설치 가능
+3. **Docker & Docker Compose** 설치
+   - [Docker 공식 사이트](https://docs.docker.com/get-docker/) 참고
+   - [Docker Compose 설치 안내](https://docs.docker.com/compose/install/) 참고
+4. **Wi-Fi 환경** 준비
+   - PMS01 보드와 테스트용 PC(혹은 노트북)가 동일한 네트워크(Wi-Fi)에 연결되어야 함
+5. PMS01 보드에 12V 전원 공급 및 PZEM-004T 모듈에 220V 공급. **주의: PMS01 보드와는 별개로 PZEM-004T 모듈에 220V 전압이 공급되어야만 정상적으로 동작합니다.**
 
-2. 필요한 라이브러리 설치
-    - PubSubClient
-    - ArduinoJson
-    - 기존 PMS01 관련 라이브러리들
+---
 
-### Node-RED 설치 및 설정
-
-1. Node-RED 설치
-   ```bash
-   sudo npm install -g --unsafe-perm node-red
-   ```
-
-2. 필요한 Node-RED 패키지 설치
-    - node-red-dashboard
-    - node-red-contrib-influxdb
-    - node-red-contrib-mqtt-broker
-   ```bash
-   cd ~/.node-red
-   npm install node-red-dashboard node-red-contrib-influxdb node-red-contrib-mqtt-broker
-   ```
-
-3. InfluxDB 설치 (데이터 저장용)
-   ```bash
-   sudo apt-get update
-   sudo apt-get install influxdb
-   sudo systemctl enable influxdb
-   sudo systemctl start influxdb
-   ```
-
-### 프로젝트 구조
+## 프로젝트 구조
 
 ```
-PowerMonitor/
-├── PowerMonitor.h         # 전력 모니터링 클래스 헤더
-├── PowerMonitor.cpp       # 전력 모니터링 클래스 구현
-├── MQTTClient.h          # MQTT 클라이언트 클래스 헤더
-├── MQTTClient.cpp        # MQTT 클라이언트 클래스 구현
-└── PowerMonitorExample.ino # 메인 스케치 파일
+.
+├── README.md                # 프로젝트 사용 방법 및 개요 문서
+├── docker-compose.yml       # Node-RED, InfluxDB, Mosquitto 서비스 구성을 위한 Docker Compose 파일
+├── include
+│   └── README               # include 디렉토리 관련 안내
+├── init-influxdb
+│   └── init-influxdb.sh     # InfluxDB 초기화 스크립트
+├── lib
+│   ├── PZEM004Tv30-pms      # PZEM-004T v3.0 센서 라이브러리 (PMS01 보드용)
+│   ├── README               # lib 디렉토리 관련 안내
+│   └── SC16IS752Serial      # 시리얼 확장 관련 라이브러리
+├── mosquitto
+│   └── config               # Mosquitto MQTT 브로커 설정 파일
+├── platformio.ini           # PMS01 펌웨어 빌드/업로드 설정 파일 (PlatformIO)
+├── src
+│   ├── MQTTClient.cpp       # MQTT 클라이언트 로직 구현
+│   ├── MQTTClient.h
+│   ├── PowerMonitor.cpp     # 전력 측정 로직 구현
+│   ├── PowerMonitor.h
+│   └── main.cpp             # PMS01 펌웨어 메인 진입점
+├── test
+│   └── README               # 테스트 관련 문서
+└── volumes
+    ├── influxdb-data        # InfluxDB 데이터 볼륨
+    ├── mosquitto-data       # Mosquitto 데이터 볼륨
+    ├── mosquitto-log        # Mosquitto 로그 볼륨
+    └── nodered-data         # Node-RED 데이터 볼륨
+
 ```
 
-## 설정 방법
+---
 
-1. Arduino 코드 설정
-    - PowerMonitorExample.ino 파일에서 WiFi 및 MQTT 설정 수정
+## PMS01 펌웨어 설정 (PlatformIO)
+
+1. `platformio.ini` 파일에서 PMS01 보드에 맞는 포트 설정(시리얼 포트)과 Wi-Fi, MQTT 설정을 수정합니다.
+
    ```cpp
-   const char* WIFI_SSID = "your_ssid";
-   const char* WIFI_PASSWORD = "your_password";
-   const char* MQTT_SERVER = "192.168.1.100";  // Node-RED 서버 IP
+   // main.cpp 내 설정 예시
+   const char* WIFI_SSID = "YOUR_WIFI_SSID";
+   const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+   const char* MQTT_SERVER = "192.168.0.10"; // docker-compose를 띄운 PC IP
    const int MQTT_PORT = 1883;
    ```
 
-2. Node-RED 흐름 설정
-    - power-monitor-flow.json 파일을 Node-RED에 import
-    - MQTT 브로커 설정 확인
-    - InfluxDB 연결 설정
+   PMS01 보드와 PC가 같은 네트워크 상에 있어야 하며, `MQTT_SERVER`에 `mosquitto` 컨테이너가 동작하는 호스트(PC)의 IP 주소를 입력하세요.
 
-3. InfluxDB 데이터베이스 생성
-   ```sql
-   CREATE DATABASE power_monitor
-   CREATE RETENTION POLICY "one_year" ON "power_monitor" DURATION 52w REPLICATION 1 DEFAULT
+2. PMS01 보드를 USB로 PC에 연결한 후, PlatformIO를 이용해 펌웨어를 빌드 및 업로드합니다.
+   ```bash
+   pio run -t upload
    ```
 
-## 대시보드 기능
+   업로드가 완료되면 PMS01 보드가 Wi-Fi에 연결하고, MQTT 서버로 데이터 전송을 시작합니다.
 
-1. 실시간 모니터링
-    - 현재 전력 사용량
-    - 전압, 전류, 역률 게이지
-    - 실시간 전력 소비 그래프
+---
 
-2. 히스토리 분석
-    - 일별/월별 전력 소비량
-    - 시간대별 사용 패턴
-    - 최대/최소 전력 사용량
+## Docker Compose로 백엔드 서비스 실행
 
-3. 기간별 조회
-    - 날짜 선택을 통한 특정 기간 데이터 조회
-    - 기간별 전력 사용량 비교
-    - 소비 패턴 분석
+이 프로젝트의 `docker-compose.yml` 파일은 프로젝트 최상위 디렉토리에 위치합니다. 다음 명령을 통해 Node-RED, InfluxDB, Mosquitto 등 백엔드 서비스를 손쉽게 실행할 수 있습니다.
 
-## 데이터 형식
+1. Docker Compose 실행
+   ```bash
+   docker-compose up -d
+   ```
 
-### MQTT 메시지 형식
-```json
-{
-    "timestamp": "2024-01-01 12:34:56",
-    "voltage": 220.5,
-    "current": 1.23,
-    "power": 270.8,
-    "energy": 1.234,
-    "frequency": 60.0,
-    "powerFactor": 0.98
-}
-```
+   위 명령 실행 후 다음 서비스들이 컨테이너 형태로 구동됩니다:
+   - **Node-RED**: [http://localhost:1880](http://localhost:1880)
+   - **InfluxDB**: [http://localhost:8086](http://localhost:8086)
+   - **Mosquitto (MQTT Broker)**: mqtt://localhost:1883
+   - **InfluxDB Admin UI**: [http://localhost:8083](http://localhost:8083) (선택적 확인용)
 
-### InfluxDB 데이터 구조
-- Measurement: power_measurements
-- Tags: device_id
-- Fields:
-    - voltage
-    - current
-    - power
-    - energy
-    - frequency
-    - powerFactor
+2. 인프라 상태 확인
+   ```bash
+   docker ps
+   ```
+   위 명령으로 컨테이너들이 정상적으로 동작하는지 확인할 수 있습니다.  
+   에러나 이슈가 발생한 경우 `docker logs <컨테이너명>`을 통해 로그를 확인하고 문제점을 파악할 수 있습니다.
 
-## 트러블슈팅
+---
 
-1. MQTT 연결 문제
-    - MQTT 브로커 IP 주소 확인
-    - 방화벽 설정 확인 (포트 1883)
-    - WiFi 연결 상태 확인
+## Node-RED 대시보드 설정
 
-2. 데이터 수집 문제
-    - Serial 모니터를 통한 디버그 메시지 확인
-    - PZEM 모듈 연결 상태 확인
-    - I2C 통신 상태 확인
+1. Node-RED UI 접속
+   - 브라우저에서 `http://localhost:1880` 접속
+2. 준비된 Node-RED 플로우 JSON을 가져오기
+   - Node-RED 편집기 우측 상단 메뉴에서 Import 선택
+   - 제공된 JSON 코드를 붙여넣고 Import
+3. Import 후 플로우 Deploy
+   - Deploy 버튼을 클릭하여 플로우 활성화
+4. Dashboard 확인
+   - 브라우저에서 `http://localhost:1880/ui`로 접속하면 전력 측정 대시보드 확인 가능
+   - 실시간 파워, 에너지 그래프, 기간별 데이터 조회 등의 기능 확인
 
-3. Node-RED 대시보드 문제
-    - 브라우저 콘솔 로그 확인
-    - InfluxDB 연결 상태 확인
-    - Node-RED 로그 확인
+---
 
-## 유지보수
+## 데이터 흐름
 
-1. 정기적인 점검사항
-    - InfluxDB 데이터 백업
-    - 시스템 로그 확인
-    - 센서 정확도 검증
+1. **PMS01 보드** -> **Mosquitto(MQTT Broker)**  
+   PMS01 보드는 설정된 Wi-Fi에 연결 후 `pms01/power` 토픽으로 전력 데이터를 MQTT 전송
 
-2. 데이터 관리
-    - 오래된 데이터 정리
-    - 데이터베이스 최적화
-    - 백업 및 복구 계획 수립
+2. **Mosquitto** -> **Node-RED**  
+   Node-RED는 `pms01/power` 토픽을 Subscribe하여 데이터를 실시간 수신
 
-## License
+3. **Node-RED** -> **InfluxDB**  
+   Node-RED Flow 내 Function 노드에서 데이터 파싱 후 InfluxDB에 저장
 
-This project is licensed under the MIT License - see the LICENSE file for details
+4. **Node-RED Dashboard**  
+   InfluxDB에 저장된 전력 데이터를 조회하여 대시보드에서 실시간 그래프 및 통계 확인
 
-## 기여
+---
 
-버그 리포트, 기능 제안, Pull Request 등 모든 기여를 환영합니다.
+## 트러블슈팅 가이드
+
+1. **MQTT 연결 실패**
+   - PMS01 보드 IP 연결 상태 확인 (보드와 호스트 PC가 같은 LAN에 있는지)
+   - Mosquitto 컨테이너가 정상 작동 중인지 `docker logs mosquitto`로 확인
+   - 방화벽 설정 확인
+
+2. **데이터 미수신**
+   - Node-RED 편집기에서 디버그 노드 추가 후 MQTT-In 노드 출력을 확인
+   - PMS01 보드 시리얼 모니터(PlatformIO Monitor)로 로그 출력 확인
+
+3. **InfluxDB 쿼리 문제**
+   - InfluxDB Admin UI(http://localhost:8083) 접속해 DB 및 Measurement 확인
+   - Node-RED의 InfluxDB 노드 설정 확인
+
+---
+
+## 유지보수 및 확장
+
+- PMS01 보드 측 펌웨어 수정 시, PlatformIO를 통해 재빌드/업로드
+- InfluxDB 데이터 백업/관리
+- Node-RED 플로우 수정으로 기능 확장 (알람, 이메일 통지 등)
+
+---
+
+## 라이선스 및 기여
+
+- 본 프로젝트는 MIT 라이선스를 따릅니다.
+- 버그 제보, 기능 개선 제안, Pull Request 모두 환영합니다.
+
+---
+
+이제 위 단계들을 순서대로 따라하면, PMS01 보드에서 측정한 전력 데이터가 로컬 Docker Compose 환경에서 구동되는 Mosquitto, InfluxDB, Node-RED 대시보드를 통해 쉽게 시각화 및 분석 가능한 데모 환경을 구축할 수 있습니다.
